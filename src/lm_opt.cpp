@@ -103,11 +103,11 @@ typedef ceres::AutoDiffCostFunction<Feature, 2, 7, 1> FeatureFactor;
 void bodyPose(const double& t, xform::Xformd& x_ib)
 {
   // Body pose as a function of time
-  double x = 0;
+  double x = sin(t);
   double y = sin(t);
   double z = cos(t);
-  double phi = 0;
-  double theta = 0;
+  double phi = 0.1 * sin(t);
+  double theta = 0.1 * cos(t);
   double psi = 0;
 
   // Replace elements
