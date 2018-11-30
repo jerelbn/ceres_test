@@ -131,7 +131,7 @@ int main()
   Camerad cam(focal_len, cam_center, distortion, cam_skew, image_size);
 
   // Landmark vectors in NED fixed frame
-  Array<double, 3, 50> lm;
+  Array<double, 3, 5> lm;
   lm.setRandom();
   lm.row(0) += 3;
   lm.row(1) *= 3;
@@ -145,8 +145,8 @@ int main()
   xform::Xformd x_bc(p_bc, q_bc);
 
   // Define times and poses of body
-  double dt = 0.1;
-  double tf = 1.0;
+  double dt = 0.04;
+  double tf = 10.0;
   double t = 0;
   vector<double> ts;
   vector<xform::Xformd, aligned_allocator<xform::Xformd>> x_ibs;
@@ -248,9 +248,7 @@ int main()
     // Initialize landmark inverse distances based on body positions
     vector<double> rho_hats;
     for (int i = 0; i < lm.cols(); ++i)
-    {
       rho_hats.push_back(0.1);
-    }
 
     // Output initial comparisons with truth
     cout << "======= Initial Errors =======" << endl;
