@@ -108,7 +108,7 @@ void bodyPose(const double& t, xform::Xformd& x_ib)
   double z = cos(t);
   double phi = 0.1 * sin(t);
   double theta = 0.1 * cos(t);
-  double psi = 0;
+  double psi = 0.1 * sin(t);
 
   // Replace elements
   x_ib.sett(Vector3d(x, y, z));
@@ -119,7 +119,7 @@ void bodyPose(const double& t, xform::Xformd& x_ib)
 int main()
 {
   // Constants
-//  srand((unsigned)time(NULL));
+  srand((unsigned)time(NULL));
 
   // Build a camera
   Vector2d focal_len(483.4673, 481.3655);
@@ -131,17 +131,16 @@ int main()
   Camerad cam(focal_len, cam_center, distortion, cam_skew, image_size);
 
   // Landmark vectors in NED fixed frame
-  Array<double, 3, 10> lm;
+  Array<double, 3, 50> lm;
   lm.setRandom();
-  lm.row(0) += 2;
-  lm.row(1) *= 5;
-  lm.row(2) *= 5;
+  lm.row(0) += 3;
+  lm.row(1) *= 3;
+  lm.row(2) *= 3;
 
   // Bady to camera translation and rotation
   Vector3d p_bc(0, 0, 0); // body to camera translation in body frame
   quat::Quatd q_bcb(0, 0, 0); // body to camera-body rotation
-//  quat::Quatd q_cbc(M_PI/2.0, 0.0, M_PI/2.0); // camera-body to camera rotation
-  quat::Quatd q_cbc; // camera-body to camera rotation
+  quat::Quatd q_cbc(M_PI/2.0, 0.0, M_PI/2.0); // camera-body to camera rotation
   quat::Quatd q_bc = q_bcb * q_cbc; // body to camera rotation
   xform::Xformd x_bc(p_bc, q_bc);
 
@@ -221,24 +220,37 @@ int main()
     Vector2d nu2_hat;
     double rho1 = 1.0 / p1_cl.norm();
     cam.invProj(nu1, 1.0, zeta1);
-    Vector3d p2_cl_hat = x_bc.q().rotp(x2_ib.q().rotp(x1_ib.q().rota(x_bc.q().rota(1.0 / rho1 * zeta1) +
-                         x_bc.t()) + x1_ib.t() - x2_ib.t()) -x_bc.t());
+    Vector3d p2_cl_hat = x_bc.q_.rotp(x2_ib.q_.rotp(x1_ib.q_.rota(x_bc.q_.rota(1.0 / rho1 * zeta1) +
+                         x_bc.t_) + x1_ib.t_ - x2_ib.t_) - x_bc.t_);
     cam.proj(p2_cl_hat, nu2_hat);
 
+    cout << "nu1       =  " << nu1.transpose() << endl;
+    cout << "nu2       = " << nu2.transpose() << endl;
+    cout << "p1_cl     =  " << p1_cl.transpose() << endl;
+    cout << "p2_cl     =  " << p2_cl.transpose() << endl;
+    cout << "p2_cl_hat =  " << p2_cl_hat.transpose() << endl;
+    cout << "distance =   " << p2_cl.norm() << endl;
+    cout << "distance^2 = " << p2_cl.norm() * p2_cl.norm() << endl;
+    cout << "product   =  " << p2_cl.dot(p2_cl_hat) << endl;
+    cout << "nu2_hat        = " << nu2_hat.transpose() << endl;
     cout << "residual error = " << (nu2 - nu2_hat).transpose() << endl;
   }
   else
   {
-    // Iniitalize estimated camera transform and initial inverse feature distances
+    // Initialize estimated camera transform
     Vector3d noise;
     noise.setRandom();
-    noise *= 0.5;
+    noise *= 0.1;
     xform::Xformd x_bc_hat = x_bc;
     x_bc_hat.t_ += noise;
     x_bc_hat.q_ += noise;
+
+    // Initialize landmark inverse distances based on body positions
     vector<double> rho_hats;
     for (int i = 0; i < lm.cols(); ++i)
+    {
       rho_hats.push_back(0.1);
+    }
 
     // Output initial comparisons with truth
     cout << "======= Initial Errors =======" << endl;
@@ -270,7 +282,7 @@ int main()
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-//    std::cout << "\n\n" << summary.FullReport() << "\n\n";
+    std::cout << "\n\n" << summary.BriefReport() << "\n\n";
 
     // Output final comparisons with truth
     cout << "\n======= Final Errors =======" << endl;
