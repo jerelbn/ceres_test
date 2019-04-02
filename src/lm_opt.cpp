@@ -262,6 +262,10 @@ int main()
     // Add parameters to solver
     problem.AddParameterBlock(x_bc_hat.data(), 7, new XformLocalParam);
     for (int i = 0; i < rho_hats.size(); ++i)
+      problem.AddParameterBlock(&rho_hats[i], 1);
+
+    // Add factors
+    for (int i = 0; i < rho_hats.size(); ++i)
     {
       for (int j = 1; j < x_ibs.size(); ++j)
       {

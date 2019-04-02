@@ -117,7 +117,7 @@ struct H2
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   H2(const common::Quaterniond& _q_bc, const Vector3d& _p_nb, const Vector3d& _p_bk)
-    : q_bc(_q_bc), p_nb(_p_nb), p_bk(_p_bk) {}
+    : q_bc(_q_bc), p_bk(_p_bk), p_nb(_p_nb) {}
 
   template <typename T>
   bool operator()(const T* const _q_nb, T* residual) const
@@ -139,7 +139,7 @@ private:
 
 int main()
 {
-  srand((unsigned)time(NULL));
+  srand(unsigned(time(nullptr)));
   bool rotations = false;
   double eps = 1e-5;
 
@@ -205,7 +205,6 @@ int main()
     common::Quaterniond q_bc(a.setRandom().normalized());
     common::Quaterniond q_bk(a.setRandom().normalized());
     common::Quaterniond q_nb(a.setRandom().normalized());
-    Vector3d p_bc = Vector3d::Random();
     Vector3d p_bk = Vector3d::Random();
     Vector3d p_nb = Vector3d::Random();
     Vector3d pt = q_bc.rot(q_nb.rot(p_bk - p_nb));

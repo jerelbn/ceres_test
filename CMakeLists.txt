@@ -5,7 +5,7 @@ project(ceres_test)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
-set(CMAKE_CXX_FLAGS "-std=c++14 -mavx2 -mfma -fopenmp")
+set(CMAKE_CXX_FLAGS "-std=c++11 -mavx2 -mfma -fopenmp")
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -53,3 +53,6 @@ target_link_libraries(manifold_jacobians common_cpp ${CERES_LIBRARIES})
 
 add_executable(lm_opt src/lm_opt.cpp)
 target_link_libraries(lm_opt ${CERES_LIBRARIES})
+
+add_executable(lc_vi_mhe src/lc_vi_mhe/lc_vi_mhe_test.cpp src/lc_vi_mhe/lc_vi_mhe.cpp src/lc_vi_mhe/true_state.cpp)
+target_link_libraries(lc_vi_mhe ${CERES_LIBRARIES} -lstdc++fs)
