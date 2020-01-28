@@ -3,7 +3,7 @@
 #include <ceres/ceres.h>
 #include <random>
 #include <experimental/filesystem>
-#include "geometry/quat.h"
+#include "common_cpp/quaternion.h
 #include "lc_vi_mhe/globals.h"
 #include "lc_vi_mhe/true_state.h"
 #include "lc_vi_mhe/lc_vi_mhe.h"
@@ -36,7 +36,7 @@ int main()
   Vector3d ba(0.1, 0.2, 0.3);
   Vector3d bg(0.1, 0.2, 0.3);
   Vector3d p_bc(0, 0, 0);
-  quat::Quatd q_bc;
+  common::Quaterniond q_bc;
 
   TrueState truth(ba, // accel bias
                   bg, // gyro bias

@@ -1,9 +1,9 @@
 #pragma once
 #include <Eigen/Eigen>
 #include <ceres/ceres.h>
-#include <geometry/quat.h>
-#include <geometry/xform.h>
 #include <set>
+#include "common_cpp/quaternion.h"
+#include "common_cpp/transform.h"
 #include "lc_vi_mhe/globals.h"
 #include "lc_vi_mhe/true_state.h"
 

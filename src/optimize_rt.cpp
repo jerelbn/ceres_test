@@ -2,7 +2,7 @@
 #include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <chrono>
-#include "common_cpp/common.h"
+#include "common_cpp/quaternion.h"
 
 using namespace std;
 using namespace Eigen;

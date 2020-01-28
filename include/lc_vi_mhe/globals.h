@@ -1,7 +1,7 @@
 #pragma once
 #include <Eigen/Eigen>
 #include <set>
-#include "geometry/quat.h"
+#include "common_cpp/quaternion.h"
 
 
 namespace global
@@ -20,7 +20,7 @@ struct Measurement
   Eigen::Vector3d acc; // IMU
   Eigen::Vector3d gyro; // IMU
   Eigen::Vector3d p; // VO
-  quat::Quatd q; // VO
+  common::Quaterniond q; // VO
   bool operator<(const Measurement& meas) const { return t < meas.t; }
 };
 typedef std::multiset<Measurement> MeasurementList;

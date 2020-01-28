@@ -3,10 +3,8 @@
 #include <Eigen/Eigen>
 #include <iostream>
 #include <chrono>
-#include "geometry/quat.h"
-#include "geometry/xform.h"
-#include "geometry/support.h"
-#include "geometry/cam.h"
+#include "common_cpp/quaternion.h"
+#include "common_cpp/transform.h"
 
 using namespace std;
 using namespace Eigen;
@@ -19,10 +17,10 @@ struct QuatPlus {
   template<typename T>
   bool operator()(const T* x, const T* delta, T* x_plus_delta) const
   {
-    Quat<T> q(x);
+    common::Quaternion<T> q(x);
     Map<const Matrix<T,3,1>> d(delta);
     Map<Matrix<T,4,1>> qp(x_plus_delta);
-    qp = (q + d).elements();
+    qp = (q + d).toEigen();
     return true;
   }
 };
@@ -34,10 +32,10 @@ struct XformPlus {
   template<typename T>
   bool operator()(const T* x, const T* delta, T* x_plus_delta) const
   {
-    xform::Xform<T> q(x);
+    common::Transform<T> q(x);
     Map<const Matrix<T,6,1>> d(delta);
     Map<Matrix<T,7,1>> qp(x_plus_delta);
-    qp = (q + d).elements();
+    qp = (q + d).toEigen();
     return true;
   }
 };
@@ -50,7 +48,7 @@ class Feature
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  Feature(const Vector2d& _pix1, const Vector2d& _pix2, const xform::Xformd& _x1_ib, const xform::Xformd& _x2_ib, const Camerad& _cam)
+  Feature(const Vector2d& _pix1, const Vector2d& _pix2, const common::Transformd& _x1_ib, const common::Transformd& _x2_ib, const Camerad& _cam)
   {
     pix1 = _pix1;
     pix2 = _pix2;
@@ -63,7 +61,7 @@ public:
   bool operator()(const T* const _x_bc, const T* const _rho1, T* residuals) const
   {
     // Copy/map states and residual error
-    const xform::Xform<T> x_bc(_x_bc);
+    const common::Transform<T> x_bc(_x_bc);
     const T rho1(_rho1[0]);
     Map<Matrix<T,2,1>> r(residuals);
 
@@ -71,7 +69,7 @@ public:
     Camera<T> cam_ = cam.cast<T>();
     Matrix<T,2,1> pix1_ = pix1.cast<T>();
     Matrix<T,2,1> pix2_ = pix2.cast<T>();
-    xform::Xform<T> x1_ib_, x2_ib_;
+    common::Transform<T> x1_ib_, x2_ib_;
     x1_ib_.t_ = x1_ib.t_.cast<T>();
     x1_ib_.q_.arr_ = x1_ib.q_.arr_.cast<T>();
     x2_ib_.t_ = x2_ib.t_.cast<T>();
@@ -93,14 +91,14 @@ public:
 
   Camerad cam;
   Vector2d pix1, pix2; // pixels positions of measured landmark in frame 1 and 2, respectively
-  xform::Xformd x1_ib, x2_ib; // body pose at time of frame 1 and 2, respectively
+  common::Transformd x1_ib, x2_ib; // body pose at time of frame 1 and 2, respectively
 
 };
 typedef ceres::AutoDiffCostFunction<Feature, 2, 7, 1> FeatureFactor;
 
 
 
-void bodyPose(const double& t, xform::Xformd& x_ib)
+void bodyPose(const double& t, common::Transformd& x_ib)
 {
   // Body pose as a function of time
   double x = sin(t);
@@ -110,7 +108,7 @@ void bodyPose(const double& t, xform::Xformd& x_ib)
   double theta = 0.1 * cos(t);
   double psi = 0.1 * sin(t);
 
-  // Replace elements
+  // Replace toEigen
   x_ib.sett(Vector3d(x, y, z));
   x_ib.setq(quat::Quatd(phi, theta, psi));
 }
@@ -142,15 +140,15 @@ int main()
   quat::Quatd q_bcb(0, 0, 0); // body to camera-body rotation
   quat::Quatd q_cbc(M_PI/2.0, 0.0, M_PI/2.0); // camera-body to camera rotation
   quat::Quatd q_bc = q_bcb * q_cbc; // body to camera rotation
-  xform::Xformd x_bc(p_bc, q_bc);
+  common::Transformd x_bc(p_bc, q_bc);
 
   // Define times and poses of body
   double dt = 0.04;
   double tf = 10.0;
   double t = 0;
   vector<double> ts;
-  vector<xform::Xformd, aligned_allocator<xform::Xformd>> x_ibs;
-  xform::Xformd x_ib;
+  vector<common::Transformd, aligned_allocator<common::Transformd>> x_ibs;
+  common::Transformd x_ib;
   while (t <= tf)
   {
     bodyPose(t, x_ib);
@@ -166,7 +164,7 @@ int main()
   Vector2d pix;
   for (int i = 0; i < x_ibs.size(); ++i)
   {
-    xform::Xformd x_ic;
+    common::Transformd x_ic;
     x_ic.sett(x_ibs[i].t() + x_ibs[i].q().rota(x_bc.t()));
     x_ic.setq(x_ibs[i].q() * x_bc.q());
 
@@ -189,13 +187,13 @@ int main()
   if (test_error)
   {
     // Define position and attitude of two cameras in NED fixed frame
-    xform::Xformd x1_ib, x2_ib;
+    common::Transformd x1_ib, x2_ib;
     double t1 = 0.0;
     double t2 = 1.0;
     bodyPose(t1, x1_ib);
     bodyPose(t2, x2_ib);
 
-    xform::Xformd x1_ic, x2_ic;
+    common::Transformd x1_ic, x2_ic;
     x1_ic.sett(x1_ib.t() + x1_ib.q().rota(x_bc.t()));
     x2_ic.sett(x2_ib.t() + x2_ib.q().rota(x_bc.t()));
     x1_ic.setq(x1_ib.q() * x_bc.q());
@@ -241,7 +239,7 @@ int main()
     Vector3d noise;
     noise.setRandom();
     noise *= 0.1;
-    xform::Xformd x_bc_hat = x_bc;
+    common::Transformd x_bc_hat = x_bc;
     x_bc_hat.t_ += noise;
     x_bc_hat.q_ += noise;
 
