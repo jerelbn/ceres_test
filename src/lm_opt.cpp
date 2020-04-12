@@ -3,6 +3,7 @@
 #include <Eigen/Eigen>
 #include <iostream>
 #include <chrono>
+#include "common_cpp/common.h"
 #include "common_cpp/quaternion.h"
 #include "common_cpp/transform.h"
 
@@ -48,13 +49,13 @@ class Feature
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  Feature(const Vector2d& _pix1, const Vector2d& _pix2, const common::Transformd& _x1_ib, const common::Transformd& _x2_ib, const Cam& _cam)
+  Feature(const Vector2d& _pix1, const Vector2d& _pix2, const common::Transformd& _x1_ib, const common::Transformd& _x2_ib, const Matrix3d& cam_mat)
   {
     pix1 = _pix1;
     pix2 = _pix2;
     x1_ib = _x1_ib;
     x2_ib = _x2_ib;
-    cam = _cam;
+    camera_matrix = cam_mat;
   }
 
   template<typename T>
@@ -66,30 +67,30 @@ public:
     Map<Matrix<T,2,1>> r(residuals);
 
     // Convert measurements, etc. to templated types
-    Camera<T> cam_ = cam.cast<T>();
+    Matrix<T,3,3> K_ = camera_matrix.cast<T>();
     Matrix<T,2,1> pix1_ = pix1.cast<T>();
     Matrix<T,2,1> pix2_ = pix2.cast<T>();
     common::Transform<T> x1_ib_, x2_ib_;
-    x1_ib_.t_ = x1_ib.t_.cast<T>();
-    x1_ib_.q_.arr_ = x1_ib.q_.arr_.cast<T>();
-    x2_ib_.t_ = x2_ib.t_.cast<T>();
-    x2_ib_.q_.arr_ = x2_ib.q_.arr_.cast<T>();
+    x1_ib_.p(x1_ib.p().cast<T>());
+    x1_ib_.q(x1_ib.q().toEigen().cast<T>());
+    x2_ib_.p(x2_ib.p().cast<T>());
+    x2_ib_.q(x2_ib.q().toEigen().cast<T>());
 
     // Predict landmark vector at second frame using estimated states
     Matrix<T,3,1> zeta1;
-    cam_.invProj(pix1_, T(1.0), zeta1);
-    Matrix<T,3,1> p2_cl_hat = x_bc.q_.rotp(x2_ib_.q_.rotp(x1_ib_.q_.rota(x_bc.q_.rota(T(1.0) / rho1 * zeta1) +
-                              x_bc.t_) + x1_ib_.t_ - x2_ib_.t_) - x_bc.t_);
+    common::unitVectorFromPixelPosition(zeta1,pix1_,K_);
+    Matrix<T,3,1> p2_cl_hat = x_bc.q().rotp(x2_ib_.q().rotp(x1_ib_.q().rota(x_bc.q().rota(T(1.0) / rho1 * zeta1) +
+                              x_bc.p()) + x1_ib_.p() - x2_ib_.p()) - x_bc.p());
 
     // Compute residual error
     Matrix<T,2,1> pix2_hat;
-    cam_.proj(p2_cl_hat, pix2_hat);
+    common::projectToImage(pix2_hat, p2_cl_hat, K_);
     r = pix2_ - pix2_hat;
 
     return true;
   }
 
-  Cam cam;
+  Matrix3d camera_matrix; // Camera intrinsic matrix
   Vector2d pix1, pix2; // pixels positions of measured landmark in frame 1 and 2, respectively
   common::Transformd x1_ib, x2_ib; // body pose at time of frame 1 and 2, respectively
 
@@ -109,8 +110,8 @@ void bodyPose(const double& t, common::Transformd& x_ib)
   double psi = 0.1 * sin(t);
 
   // Replace toEigen
-  x_ib.sett(Vector3d(x, y, z));
-  x_ib.setq(common::Quaterniond::fromEuler(phi, theta, psi));
+  x_ib.p(Vector3d(x, y, z));
+  x_ib.q(common::Quaterniond::fromEuler(phi, theta, psi));
 }
 
 
@@ -119,14 +120,11 @@ int main()
   // Constants
   srand((unsigned)time(NULL));
 
-  // Build a camera
-  Vector2d focal_len(483.4673, 481.3655);
-  Vector2d cam_center(320.0, 240.0);
-  Vector2d image_size(640.0, 480.0);
-  Vector5d distortion;
-  distortion << 0, 0, 0, 0, 0;
-  double cam_skew(0);
-  UCam cam(focal_len, cam_center, cam_skew, image_size, distortion);
+  // Build camera intrinsic matrix
+  Matrix3d camera_matrix;
+  camera_matrix << 483.4673,      0.0, 320.0,
+                        0.0, 481.3655, 240.0,
+                        0.0,      0.0,   1.0;
 
   // Landmark vectors in NED fixed frame
   Array<double, 3, 5> lm;
@@ -137,8 +135,8 @@ int main()
 
   // Bady to camera translation and rotation
   Vector3d p_bc(0, 0, 0); // body to camera translation in body frame
-  common::Quaterniond q_bcb(0, 0, 0); // body to camera-body rotation
-  common::Quaterniond q_cbc(M_PI/2.0, 0.0, M_PI/2.0); // camera-body to camera rotation
+  common::Quaterniond q_bcb = common::Quaterniond::fromEuler(0, 0, 0); // body to camera-body rotation
+  common::Quaterniond q_cbc = common::Quaterniond::fromEuler(M_PI/2.0, 0.0, M_PI/2.0); // camera-body to camera rotation
   common::Quaterniond q_bc = q_bcb * q_cbc; // body to camera rotation
   common::Transformd x_bc(p_bc, q_bc);
 
@@ -165,14 +163,14 @@ int main()
   for (int i = 0; i < x_ibs.size(); ++i)
   {
     common::Transformd x_ic;
-    x_ic.sett(x_ibs[i].t() + x_ibs[i].q().rota(x_bc.t()));
-    x_ic.setq(x_ibs[i].q() * x_bc.q());
+    x_ic.p(x_ibs[i].p() + x_ibs[i].q().rota(x_bc.p()));
+    x_ic.q(x_ibs[i].q() * x_bc.q());
 
     pixs.clear();
     for (int j = 0; j < lm.cols(); ++j)
     {
-      p_cl = x_ic.q().rotp(lm.col(j).matrix() - x_ic.t()); // Get landmark vector in camera frame
-      cam.proj(p_cl, pix); // Project into camera image
+      p_cl = x_ic.q().rotp(lm.col(j).matrix() - x_ic.p()); // Get landmark vector in camera frame
+      common::projectToImage(pix, p_cl, camera_matrix); // Project into camera image
       pixs.push_back(pix);
     }
     imgs.push_back(pixs);
@@ -181,7 +179,7 @@ int main()
   // Compute true initial depths
   vector<double> rhos;
   for (int i = 0; i < lm.cols(); ++i)
-    rhos.push_back(1.0 / (lm.col(i).matrix() - (x_ibs[0].t() + x_ibs[0].q().rota(x_bc.t()))).norm());
+    rhos.push_back(1.0 / (lm.col(i).matrix() - (x_ibs[0].p() + x_ibs[0].q().rota(x_bc.p()))).norm());
 
   bool test_error = false;
   if (test_error)
@@ -194,33 +192,33 @@ int main()
     bodyPose(t2, x2_ib);
 
     common::Transformd x1_ic, x2_ic;
-    x1_ic.sett(x1_ib.t() + x1_ib.q().rota(x_bc.t()));
-    x2_ic.sett(x2_ib.t() + x2_ib.q().rota(x_bc.t()));
-    x1_ic.setq(x1_ib.q() * x_bc.q());
-    x2_ic.setq(x2_ib.q() * x_bc.q());
+    x1_ic.p(x1_ib.p() + x1_ib.q().rota(x_bc.p()));
+    x2_ic.p(x2_ib.p() + x2_ib.q().rota(x_bc.p()));
+    x1_ic.q(x1_ib.q() * x_bc.q());
+    x2_ic.q(x2_ib.q() * x_bc.q());
 
     // Get landmark vector in each camera frame
-    Vector3d p1_cl = x1_ic.q().rotp(lm.col(0).matrix() - x1_ic.t());
-    Vector3d p2_cl = x2_ic.q().rotp(lm.col(0).matrix() - x2_ic.t());
+    Vector3d p1_cl = x1_ic.q().rotp(lm.col(0).matrix() - x1_ic.p());
+    Vector3d p2_cl = x2_ic.q().rotp(lm.col(0).matrix() - x2_ic.p());
 
     // Project into camera images
     Vector2d nu1, nu2;
-    cam.proj(p1_cl, nu1);
-    cam.proj(p2_cl, nu2);
+    common::projectToImage(nu1, p1_cl, camera_matrix);
+    common::projectToImage(nu2, p2_cl, camera_matrix);
 
     // Project out of images
     Vector3d p1_cl_, p2_cl_;
-    cam.invProj(nu1, p1_cl.norm(), p1_cl_);
-    cam.invProj(nu2, p2_cl.norm(), p2_cl_);
+    common::unitVectorFromPixelPosition(p1_cl_, nu1, camera_matrix);
+    common::unitVectorFromPixelPosition(p2_cl_, nu2, camera_matrix);
 
     // Check the equation relating the pixels matched in each image
     Vector3d zeta1;
     Vector2d nu2_hat;
     double rho1 = 1.0 / p1_cl.norm();
-    cam.invProj(nu1, 1.0, zeta1);
-    Vector3d p2_cl_hat = x_bc.q_.rotp(x2_ib.q_.rotp(x1_ib.q_.rota(x_bc.q_.rota(1.0 / rho1 * zeta1) +
-                         x_bc.t_) + x1_ib.t_ - x2_ib.t_) - x_bc.t_);
-    cam.proj(p2_cl_hat, nu2_hat);
+    common::unitVectorFromPixelPosition(zeta1, nu1, camera_matrix);
+    Vector3d p2_cl_hat = x_bc.q().rotp(x2_ib.q().rotp(x1_ib.q().rota(x_bc.q().rota(1.0 / rho1 * zeta1) +
+                         x_bc.p()) + x1_ib.p() - x2_ib.p()) - x_bc.p());
+    common::projectToImage(nu2_hat, p2_cl_hat, camera_matrix);
 
     cout << "nu1       =  " << nu1.transpose() << endl;
     cout << "nu2       = " << nu2.transpose() << endl;
@@ -240,8 +238,8 @@ int main()
     noise.setRandom();
     noise *= 0.1;
     common::Transformd x_bc_hat = x_bc;
-    x_bc_hat.t_ += noise;
-    x_bc_hat.q_ += noise;
+    x_bc_hat.p(x_bc_hat.p() + noise);
+    x_bc_hat.q(x_bc_hat.q() + noise);
 
     // Initialize landmark inverse distances based on body positions
     vector<double> rho_hats;
@@ -268,7 +266,7 @@ int main()
       for (int j = 1; j < x_ibs.size(); ++j)
       {
         problem.AddResidualBlock(new FeatureFactor(
-                                 new Feature(imgs[0][i], imgs[j][i], x_ibs[0], x_ibs[j], cam)),
+                                 new Feature(imgs[0][i], imgs[j][i], x_ibs[0], x_ibs[j], camera_matrix)),
                                  NULL, x_bc_hat.data(), &rho_hats[i]);
       }
     }

@@ -50,8 +50,8 @@ target_link_libraries(state_jacobian ${CERES_LIBRARIES})
 add_executable(manifold_jacobians src/manifold_jacobians.cpp)
 target_link_libraries(manifold_jacobians ${CERES_LIBRARIES})
 
-# add_executable(lm_opt src/lm_opt.cpp)
-# target_link_libraries(lm_opt ${CERES_LIBRARIES})
+add_executable(lm_opt src/lm_opt.cpp)
+target_link_libraries(lm_opt ${CERES_LIBRARIES})
 
 add_executable(lc_vi_mhe src/lc_vi_mhe/lc_vi_mhe_test.cpp src/lc_vi_mhe/lc_vi_mhe.cpp src/lc_vi_mhe/true_state.cpp)
 target_link_libraries(lc_vi_mhe ${CERES_LIBRARIES} -lstdc++fs)
