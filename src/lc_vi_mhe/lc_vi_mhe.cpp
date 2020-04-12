@@ -52,7 +52,7 @@ void MHE::buildGraph()
   // Initialize parameters
   // set first pose and velocity to identity and zero
   // integrate imu to get following poses and velocities
-  x_.col(0) = xform::Xformd().arr_;
+  x_.col(0) = common::Transformd().toEigen();
   v_.col(0).setZero();
 }
 
@@ -61,9 +61,9 @@ void MHE::preintegrationTest(const double& dt, TrueState& truth)
 {
   // Test pre-integration between all keyframes
   Vector3d alpha, beta;
-  quat::Quatd gamma;
+  common::Quaterniond gamma;
   Vector3d pk, pk2, vk, vk2;
-  quat::Quatd qk, qk2;
+  common::Quaterniond qk, qk2;
   Vector3d dummy1, dummy2;
   double tk, tk2;
 
@@ -81,10 +81,10 @@ void MHE::preintegrationTest(const double& dt, TrueState& truth)
       {
         // Estimates
         double dtk = tk2 - tk;
-        static quat::Quatd qbg = quat::Quatd::exp(-truth.bg * dtk);
+        static common::Quaterniond qbg = common::Quaterniond::exp(-truth.bg * dtk);
         Vector3d alpha_hat = qk.rotp(pk2 - pk - vk * dtk - 0.5 * g * global::e3 * dtk *dtk);
         Vector3d beta_hat = qk.rotp(vk2 - vk - g * global::e3 * dtk);
-        quat::Quatd gamma_hat = qk.inverse() * qk2 * qbg.inverse();
+        common::Quaterniond gamma_hat = qk.inverse() * qk2 * qbg.inverse();
 
         // Errors
         Vector3d alpha_error = alpha - alpha_hat;
@@ -102,7 +102,7 @@ void MHE::preintegrationTest(const double& dt, TrueState& truth)
       qk = qk2;
       alpha.setZero();
       beta.setZero();
-      gamma = quat::Quatd::Identity();
+      gamma = common::Quaterniond();
       ++vo_idx;
       vo_meas = vo_list_[vo_idx];
       tk2 = vo_meas.t;

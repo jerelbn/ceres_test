@@ -48,7 +48,7 @@ class Feature
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  Feature(const Vector2d& _pix1, const Vector2d& _pix2, const common::Transformd& _x1_ib, const common::Transformd& _x2_ib, const Camerad& _cam)
+  Feature(const Vector2d& _pix1, const Vector2d& _pix2, const common::Transformd& _x1_ib, const common::Transformd& _x2_ib, const Cam& _cam)
   {
     pix1 = _pix1;
     pix2 = _pix2;
@@ -110,7 +110,7 @@ void bodyPose(const double& t, common::Transformd& x_ib)
 
   // Replace toEigen
   x_ib.sett(Vector3d(x, y, z));
-  x_ib.setq(quat::Quatd(phi, theta, psi));
+  x_ib.setq(common::Quaterniond::fromEuler(phi, theta, psi));
 }
 
 
@@ -137,9 +137,9 @@ int main()
 
   // Bady to camera translation and rotation
   Vector3d p_bc(0, 0, 0); // body to camera translation in body frame
-  quat::Quatd q_bcb(0, 0, 0); // body to camera-body rotation
-  quat::Quatd q_cbc(M_PI/2.0, 0.0, M_PI/2.0); // camera-body to camera rotation
-  quat::Quatd q_bc = q_bcb * q_cbc; // body to camera rotation
+  common::Quaterniond q_bcb(0, 0, 0); // body to camera-body rotation
+  common::Quaterniond q_cbc(M_PI/2.0, 0.0, M_PI/2.0); // camera-body to camera rotation
+  common::Quaterniond q_bc = q_bcb * q_cbc; // body to camera rotation
   common::Transformd x_bc(p_bc, q_bc);
 
   // Define times and poses of body

@@ -3,7 +3,7 @@
 #include <ceres/ceres.h>
 #include <random>
 #include <experimental/filesystem>
-#include "common_cpp/quaternion.h
+#include "common_cpp/quaternion.h"
 #include "lc_vi_mhe/globals.h"
 #include "lc_vi_mhe/true_state.h"
 #include "lc_vi_mhe/lc_vi_mhe.h"

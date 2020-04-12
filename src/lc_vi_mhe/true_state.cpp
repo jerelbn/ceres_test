@@ -27,7 +27,7 @@ TrueState::~TrueState()
 }
 
 TrueState::TrueState(const Vector3d& _ba, const Vector3d& _bg,
-                     const Vector3d& _p_bc, const quat::Quatd& _q_bc,
+                     const Vector3d& _p_bc, const common::Quaterniond& _q_bc,
                      const double& sigma_acc, const double& sigma_gyro, const bool& _noise_on,
                      const double& sigma_vot, const double& sigma_vor,
                      const double& _imu_update_rate, const double& _vo_update_rate)
@@ -58,7 +58,7 @@ void TrueState::update(const double& t)
   log(t);
 }
 
-void TrueState::getState(const double &t, Vector3d &p, Vector3d &v, Vector3d &a, quat::Quatd &q, Vector3d &omega)
+void TrueState::getState(const double &t, Vector3d &p, Vector3d &v, Vector3d &a, common::Quaterniond &q, Vector3d &omega)
 {
   p(0) = sin(t);
   p(1) = sin(t);
@@ -75,7 +75,7 @@ void TrueState::getState(const double &t, Vector3d &p, Vector3d &v, Vector3d &a,
   double roll = sin(t);
   double pitch = sin(t);
   double yaw = sin(t);
-  q = quat::Quatd(roll, pitch, yaw);
+  q = common::Quaterniond::fromEuler(roll, pitch, yaw);
 
   Matrix3d A;
   A.setZero();
@@ -130,11 +130,11 @@ Vector3d TrueState::getVOT(default_random_engine &rng)
   }
 }
 
-quat::Quatd TrueState::getVOR(default_random_engine &rng)
+common::Quaterniond TrueState::getVOR(default_random_engine &rng)
 {
   if (noise_on)
   {
-    quat::Quatd q_noise(vor_dist(rng), vor_dist(rng), vor_dist(rng));
+    common::Quaterniond q_noise = common::Quaterniond::fromEuler(vor_dist(rng), vor_dist(rng), vor_dist(rng));
     return q_bc.inverse() * q.inverse() * qk * q_bc * q_noise;
   }
   else
@@ -173,7 +173,7 @@ Vec15 TrueState::toVec()
   vec.segment<3>(0) = p;
   vec.segment<3>(3) = v;
   vec.segment<3>(6) = a;
-  vec.segment<3>(9) = q.euler();
+  vec.segment<3>(9) = q.eulerVector();
   vec.segment<3>(12) = omega;
   return vec;
 }
