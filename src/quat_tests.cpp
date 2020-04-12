@@ -2,6 +2,7 @@
 #include <eigen3/Eigen/Dense>
 #include <iostream>
 #include "common_cpp/common.h"
+#include "common_cpp/quaternion.h"
 #include <chrono>
 #include "quaternion_heap.h"
 #include "quaternion_stack.h"
@@ -60,7 +61,7 @@ int main()
   std::normal_distribution<double> dist(0.0, 1.0);
   srand(seed);
 
-  common::Quaternion<double> q_rand(dist, rng);
+  common::Quaternion<double> q_rand(Vector4d::Random().normalized());
   const Vector3d _delta = VectorXd::Random();
   quat3::Quaternion3<const double> _q1(q_rand.data());
   quat3::Quaternion3<double> _q2;
@@ -83,7 +84,7 @@ int main()
   auto t0 = std::chrono::system_clock::now();
   for (int i = 0; i < N; ++i)
   {
-    common::Quaternion<double> q1(dist, rng);
+    common::Quaternion<double> q1(Vector4d::Random().normalized());
     const Vector3d delta = VectorXd::Random();
     common::Quaternion<double> q2;
     ceres::AutoDiffLocalParameterization<S3Plus1,4,3> parameterization;
@@ -94,7 +95,7 @@ int main()
   auto t1 = std::chrono::system_clock::now();
   for (int i = 0; i < N; ++i)
   {
-    common::Quaternion<double> q1(dist, rng);
+    common::Quaternion<double> q1(Vector4d::Random().normalized());
     const Vector3d delta = VectorXd::Random();
     common::Quaternion<double> q2;
     ceres::AutoDiffLocalParameterization<S3Plus2,4,3> parameterization;
@@ -105,7 +106,7 @@ int main()
   auto t2 = std::chrono::system_clock::now();
   for (int i = 0; i < N; ++i)
   {
-    common::Quaternion<double> q1(dist, rng);
+    common::Quaternion<double> q1(Vector4d::Random().normalized());
     const Vector3d delta = VectorXd::Random();
     common::Quaternion<double> q2;
     ceres::AutoDiffLocalParameterization<S3Plus3,4,3> parameterization;

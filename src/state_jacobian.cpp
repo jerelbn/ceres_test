@@ -1,6 +1,7 @@
 // Jacobian of a typical state involving a rigid body and IMU biases
 
 #include "common_cpp/common.h"
+#include "common_cpp/quaternion.h"
 #include <ceres/ceres.h>
 #include <eigen3/Eigen/Dense>
 #include <iostream>
@@ -70,8 +71,8 @@ struct StateDerivative
     // Compute output
     Map<Matrix<T,DELTA_STATE_SIZE,1>> dx(residual);
     dx.setZero();
-    dx.template segment<3>(DPX) = q.inv().rot(v);
-    dx.template segment<3>(DVX) = E3 * (acc.cast<T>() - ba) + g * q.rot(e3) - (omega.cast<T>() - bg).cross(v) -
+    dx.template segment<3>(DPX) = q.rota(v);
+    dx.template segment<3>(DVX) = E3 * (acc.cast<T>() - ba) + g * q.rotp(e3) - (omega.cast<T>() - bg).cross(v) -
                                   Matrix<T,3,3>(v.asDiagonal()) * Matrix<T,3,3>(v.asDiagonal()) * I_3x2 * mu;
     dx.template segment<3>(DQX) = omega.cast<T>() - bg;
     return true;
@@ -99,10 +100,10 @@ Matrix<double,DELTA_STATE_SIZE,DELTA_STATE_SIZE> analytical_jacobian(const State
   // Pack output
   Matrix<double,DELTA_STATE_SIZE,DELTA_STATE_SIZE> J;
   J.setZero();
-  J.block<3,3>(DPX,DVX) = q.inv().R();
-  J.block<3,3>(DPX,DQX) = -q.inv().R() * common::skew(v);
+  J.block<3,3>(DPX,DVX) = q.inverse().R();
+  J.block<3,3>(DPX,DQX) = -q.inverse().R() * common::skew(v);
   J.block<3,3>(DVX,DVX) = -common::skew(Vector3d(omega - bg)) - 2.0 * Matrix3d((I_3x2 * mu).asDiagonal()) * Matrix3d(v.asDiagonal());
-  J.block<3,3>(DVX,DQX) = common::gravity * common::skew(Vector3d(q.rot(common::e3)));
+  J.block<3,3>(DVX,DQX) = common::gravity * common::skew(Vector3d(q.rotp(common::e3)));
   J.block<3,3>(DVX,DAX) = -common::e3 * common::e3.transpose();
   J.block<3,3>(DVX,DGX) = -common::skew(v);
   J.block<3,2>(DVX,DCX) = -Matrix3d(v.asDiagonal()) * Matrix3d(v.asDiagonal()) * I_3x2;

@@ -89,7 +89,7 @@ public:
     return true;
   }
 
-  Camerad cam;
+  Cam cam;
   Vector2d pix1, pix2; // pixels positions of measured landmark in frame 1 and 2, respectively
   common::Transformd x1_ib, x2_ib; // body pose at time of frame 1 and 2, respectively
 
@@ -123,10 +123,10 @@ int main()
   Vector2d focal_len(483.4673, 481.3655);
   Vector2d cam_center(320.0, 240.0);
   Vector2d image_size(640.0, 480.0);
-  Matrix<double, 5, 1> distortion;
+  Vector5d distortion;
   distortion << 0, 0, 0, 0, 0;
   double cam_skew(0);
-  Camerad cam(focal_len, cam_center, distortion, cam_skew, image_size);
+  UCam cam(focal_len, cam_center, cam_skew, image_size, distortion);
 
   // Landmark vectors in NED fixed frame
   Array<double, 3, 5> lm;

@@ -2,6 +2,7 @@
 #include <eigen3/Eigen/Dense>
 #include <iostream>
 #include "common_cpp/common.h"
+#include "common_cpp/quaternion.h"
 
 using namespace std;
 using namespace Eigen;
@@ -162,22 +163,22 @@ int main()
 
   // Bady to camera translation and rotation
   Vector3d pbc(0,0,0);
-  common::Quaterniond qbc(M_PI/2, 0.0, M_PI/2);
+  common::Quaterniond qbc = common::Quaterniond::fromEuler(M_PI/2, 0.0, M_PI/2);
 
   // Define position and attitude of two cameras in NED fixed frame
   Vector3d p1_i2b(0,0,0);
   Vector3d p2_i2b(0,2,0);
   common::Quaterniond q1_i2b;
-  common::Quaterniond q2_i2b(0.0, 0.0, -0.1);
+  common::Quaterniond q2_i2b = common::Quaterniond::fromEuler(0.0, 0.0, -0.1);
 
-  Vector3d p1_i2c = p1_i2b + q1_i2b.inv().rot(pbc);
-  Vector3d p2_i2c = p2_i2b + q2_i2b.inv().rot(pbc);
+  Vector3d p1_i2c = p1_i2b + q1_i2b.rota(pbc);
+  Vector3d p2_i2c = p2_i2b + q2_i2b.rota(pbc);
   common::Quaterniond q1_i2c = q1_i2b * qbc;
   common::Quaterniond q2_i2c = q2_i2b * qbc;
 
   // True rotation and translation direction from second to first camera
-  Vector3d t21 = (q2_i2c.rot(Vector3d(p1_i2c - p2_i2c))).normalized();
-  common::Quaterniond q21 = q2_i2c.inv() * q1_i2c;
+  Vector3d t21 = (q2_i2c.rotp(Vector3d(p1_i2c - p2_i2c))).normalized();
+  common::Quaterniond q21 = q2_i2c.inverse() * q1_i2c;
 //  cout << "True rotation: " << q21.toEigen().transpose() << endl;
 //  cout << "True translation direction: " << t21.transpose() << endl;
 
@@ -185,19 +186,19 @@ int main()
   vector<Vector3d,aligned_allocator<Vector3d>> z1, z2;
   for (int i = 0; i < lm.cols(); ++i)
   {
-    z1.push_back((q1_i2c.rot(Vector3d(lm.col(i).matrix() - p1_i2c))).normalized());
-    z2.push_back((q2_i2c.rot(Vector3d(lm.col(i).matrix() - p2_i2c))).normalized());
+    z1.push_back((q1_i2c.rotp(Vector3d(lm.col(i).matrix() - p1_i2c))).normalized());
+    z2.push_back((q2_i2c.rotp(Vector3d(lm.col(i).matrix() - p2_i2c))).normalized());
   }
 
   // Initial guesses of R and t and initial errors
-  common::Quaterniond q(0,0,0);
-  Vector3d q_err_init = common::Quaterniond::log(q.inv() * q21);
+  common::Quaterniond q = common::Quaterniond::fromEuler(0,0,0);
+  Vector3d q_err_init = common::Quaterniond::log(q.inverse() * q21);
 
   // Find R and t by nonlinear least squares
   optimizePose(q, t21, z1, z2, num_iterations);
 
   // Final errors
-  Vector3d q_err_final = common::Quaterniond::log(q.inv() * q21);
+  Vector3d q_err_final = common::Quaterniond::log(q.inverse() * q21);
 
   // Report data
   cout << "Initial rotation error: " << q_err_init.norm() << endl;

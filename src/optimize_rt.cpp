@@ -2,6 +2,7 @@
 #include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <chrono>
+#include "common_cpp/common.h"
 #include "common_cpp/quaternion.h"
 
 using namespace std;
@@ -335,8 +336,8 @@ int main()
   common::Quaterniond q1_i2b;
   common::Quaterniond q2_i2b = common::Quaterniond::fromEuler(0.3, 0.2, -0.1);
 
-  Vector3d p1_i2c = p1_i2b + q1_i2b.inverse().rotp(pbc);
-  Vector3d p2_i2c = p2_i2b + q2_i2b.inverse().rotp(pbc);
+  Vector3d p1_i2c = p1_i2b + q1_i2b.rota(pbc);
+  Vector3d p2_i2c = p2_i2b + q2_i2b.rota(pbc);
   common::Quaterniond q1_i2c = q1_i2b * qbc;
   common::Quaterniond q2_i2c = q2_i2b * qbc;
 
@@ -356,7 +357,7 @@ int main()
 
   // Initial guesses of R and t and initial errors
   common::Quaterniond q = common::Quaterniond::fromEuler(0,0,0);
-  common::Quaterniond qt = common::Quaterniond::fromUnitVector(Vector3d(-1,0,0));
+  common::Quaterniond qt = common::Quaterniond::fromEuler(0,-1.5,0);
   Vector3d q_err_init = common::Quaterniond::log(q.inverse() * q21);
   double t_err_init = vec_diff(t21, qt.uvec());
 

@@ -1,6 +1,7 @@
  // Jacobian of a typical state involving a rigid body and IMU biases
 
 #include "common_cpp/common.h"
+#include "common_cpp/quaternion.h"
 #include <ceres/ceres.h>
 #include <eigen3/Eigen/Dense>
 #include <iostream>
@@ -124,8 +125,8 @@ struct H2
   {
     const common::Quaternion<T> q_nb(_q_nb);
     Map<Matrix<T,4,1>> r(residual);
-    Matrix<T,3,1> pt = q_bc.cast<T>().rot(q_nb.rot(p_bk.cast<T>() - p_nb.cast<T>()));
-    r = (common::Quaternion<T>(pt)).toEigen();
+    Matrix<T,3,1> pt = q_bc.cast<T>().rotp(q_nb.rotp(p_bk.cast<T>() - p_nb.cast<T>()));
+    r = (common::Quaternion<T>::fromUnitVector(pt.normalized())).toEigen();
     return true;
   }
 
@@ -207,8 +208,8 @@ int main()
     common::Quaterniond q_nb(a.setRandom().normalized());
     Vector3d p_bk = Vector3d::Random();
     Vector3d p_nb = Vector3d::Random();
-    Vector3d pt = q_bc.rot(q_nb.rot(p_bk - p_nb));
-    common::Quaterniond h(pt);
+    Vector3d pt = q_bc.rotp(q_nb.rotp(p_bk - p_nb));
+    common::Quaterniond h = common::Quaterniond::fromUnitVector(pt.normalized());
 
     // Numerical Jacobian
     Matrix<double,2,3> J_numerical;
@@ -219,11 +220,11 @@ int main()
       delta(i) = eps;
       common::Quaterniond qp = q_nb + delta;
       common::Quaterniond qm = q_nb + -delta;
-      Vector3d ptp = q_bc.rot(qp.rot(p_bk - p_nb));
-      Vector3d ptm = q_bc.rot(qm.rot(p_bk - p_nb));
-      common::Quaterniond hp(ptp);
-      common::Quaterniond hm(ptm);
-      J_numerical.col(i) = common::Quaterniond::log_uvec(hp, hm) / (2.0 * eps);
+      Vector3d ptp = q_bc.rotp(qp.rotp(p_bk - p_nb));
+      Vector3d ptm = q_bc.rotp(qm.rotp(p_bk - p_nb));
+      common::Quaterniond hp = common::Quaterniond::fromUnitVector(ptp.normalized());
+      common::Quaterniond hm = common::Quaterniond::fromUnitVector(ptm.normalized());
+      J_numerical.col(i) = common::Quaterniond::logUnitVector(hp, hm) / (2.0 * eps);
     }
 
     // Autodiff Jacobian using Eigen
